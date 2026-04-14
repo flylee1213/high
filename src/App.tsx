@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
+import { processFilesLocally, MAPPING_CONFIG } from './lib/processor';
 
 interface FileWithStatus {
   file: File;
@@ -30,14 +31,11 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [mapping, setMapping] = useState<Record<string, string>>(MAPPING_CONFIG);
   const [showMapping, setShowMapping] = useState(false);
 
   useEffect(() => {
-    fetch('/api/mapping')
-      .then(res => res.json())
-      .then(data => setMapping(data))
-      .catch(err => console.error('Failed to load mapping:', err));
+    // Mapping is now loaded directly from processor.ts
   }, []);
 
   const handleDataSourceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,24 +84,12 @@ export default function App() {
     setError(null);
     setSuccess(false);
 
-    const formData = new FormData();
-    formData.append('dataSource', dataSource);
-    templates.forEach(t => {
-      formData.append('templates', t.file);
-    });
-
     try {
-      const response = await fetch('/api/process', {
-        method: 'POST',
-        body: formData,
+      const blob = await processFilesLocally({
+        dataSource,
+        templates: templates.map(t => t.file)
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || '合同生成失败');
-      }
-
-      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -115,7 +101,8 @@ export default function App() {
 
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message);
+      console.error('Processing error:', err);
+      setError(err.message || '合同生成失败');
     } finally {
       setIsProcessing(false);
     }
