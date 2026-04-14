@@ -1,0 +1,7 @@
+{
+  "name": "high",
+  "compatibility_date": "2025-4-14",
+  "assets": {
+    "directory": "./dist"
+  }
+}
